@@ -1,0 +1,149 @@
+@page "/accounts/{Id:int}"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using MoneyBall.Data.Entities
+@using MoneyBall.Services
+@inject AccountService AccountService
+@inject TransactionService TransactionService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@(_account?.Name ?? "Account")</PageTitle>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (_account is null)
+{
+    <p>Account not found.</p>
+}
+else
+{
+    <h1>@_account.Name</h1>
+    <h6 class="text-muted">@_account.Type</h6>
+    <p class="fs-3">@_account.Balance.ToString("C")</p>
+
+    <button class="btn btn-success me-2" @onclick="() => OpenAdd(TransactionType.Deposit)">Add Deposit</button>
+    <button class="btn btn-danger" @onclick="() => OpenAdd(TransactionType.Expense)">Add Expense</button>
+
+    @if (_panelType is not null)
+    {
+        <TransactionFormPanel Type="_panelType.Value"
+                               AccountId="_account.Id"
+                               CurrentUserId="_currentUserId"
+                               Categories="_categories"
+                               Existing="_editingTransaction"
+                               OnSaved="HandlePanelSavedAsync"
+                               OnCancelled="ClosePanel" />
+    }
+
+    <table class="table mt-3">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th class="text-end">Amount</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var txn in _transactions)
+            {
+                <tr>
+                    <td>@txn.OccurredOn.ToString("d")</td>
+                    <td>@txn.Type</td>
+                    <td>@(txn.Category?.Name ?? "")</td>
+                    <td>@txn.Description</td>
+                    <td class="text-end">@txn.Amount.ToString("C")</td>
+                    <td>
+                        @if (_confirmingDeleteId == txn.Id)
+                        {
+                            <span class="me-2">Delete?</span>
+                            <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDeleteAsync(txn)">Yes</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmingDeleteId = null">No</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEdit(txn)">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmingDeleteId = txn.Id">Delete</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool _loaded;
+    private Account? _account;
+    private List<TransactionEntry> _transactions = new();
+    private List<Category> _categories = new();
+    private int _currentUserId;
+
+    private TransactionType? _panelType;
+    private TransactionEntry? _editingTransaction;
+    private int? _confirmingDeleteId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _currentUserId = int.Parse(authState.User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        _account = await AccountService.GetAccountAsync(Id, authState.User);
+        if (_account is not null)
+        {
+            _categories = await TransactionService.GetActiveCategoriesAsync();
+            await RefreshTransactionsAsync();
+        }
+
+        _loaded = true;
+    }
+
+    private async Task RefreshTransactionsAsync()
+    {
+        _transactions = await TransactionService.GetRecentTransactionsAsync(_account!.Id);
+    }
+
+    private void OpenAdd(TransactionType type)
+    {
+        _panelType = type;
+        _editingTransaction = null;
+        _confirmingDeleteId = null;
+    }
+
+    private void OpenEdit(TransactionEntry txn)
+    {
+        _panelType = txn.Type;
+        _editingTransaction = txn;
+        _confirmingDeleteId = null;
+    }
+
+    private void ClosePanel()
+    {
+        _panelType = null;
+        _editingTransaction = null;
+    }
+
+    private async Task HandlePanelSavedAsync()
+    {
+        ClosePanel();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _account = await AccountService.GetAccountAsync(Id, authState.User);
+        await RefreshTransactionsAsync();
+    }
+
+    private async Task ConfirmDeleteAsync(TransactionEntry txn)
+    {
+        _confirmingDeleteId = null;
+        await TransactionService.DeleteTransactionAsync(txn.Id);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _account = await AccountService.GetAccountAsync(Id, authState.User);
+        await RefreshTransactionsAsync();
+    }
+}

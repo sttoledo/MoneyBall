@@ -1,0 +1,42 @@
+@page "/"
+@using MoneyBall.Services
+@inject AccountService AccountService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Accounts</PageTitle>
+
+<h1>Accounts</h1>
+
+@if (_accounts.Count == 0)
+{
+    <p>No accounts to show.</p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+        @foreach (var account in _accounts)
+        {
+            <div class="col">
+                <a href="@($"accounts/{account.Id}")" class="text-decoration-none text-body">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">@account.Name</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">@account.Type</h6>
+                            <p class="card-text fs-4">@account.Balance.ToString("C")</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<MoneyBall.Data.Entities.Account> _accounts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _accounts = await AccountService.GetVisibleAccountsAsync(authState.User);
+    }
+}

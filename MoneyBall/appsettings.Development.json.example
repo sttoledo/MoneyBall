@@ -1,0 +1,20 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "SeedUsers": {
+    "Admin": {
+      "Username": "changeme",
+      "DisplayName": "Admin User",
+      "Password": "changeme"
+    },
+    "Restricted": {
+      "Username": "changeme",
+      "DisplayName": "Restricted User",
+      "Password": "changeme"
+    }
+  }
+}

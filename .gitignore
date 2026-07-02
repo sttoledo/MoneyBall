@@ -1,0 +1,15 @@
+# .NET build output
+bin/
+obj/
+*.user
+
+# Visual Studio
+.vs/
+
+# Local SQLite dev database
+MoneyBall/Data/*.db
+MoneyBall/Data/*.db-shm
+MoneyBall/Data/*.db-wal
+
+# Local secrets (real seed credentials) - see appsettings.Development.json.example
+MoneyBall/appsettings.Development.json

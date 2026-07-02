@@ -1,0 +1,182 @@
+@page "/categories"
+@rendermode InteractiveServer
+@using MoneyBall.Data.Entities
+@using MoneyBall.Services
+@inject CategoryService CategoryService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Categories & Budgets</PageTitle>
+
+<h1>Categories &amp; Budgets</h1>
+
+<div class="d-flex align-items-center mb-2">
+    <button class="btn btn-outline-secondary btn-sm me-2" @onclick="GoToPreviousMonth">&lsaquo; Previous</button>
+    <span class="fw-bold mx-1">@_monthLabel</span>
+    <button class="btn btn-outline-secondary btn-sm ms-2" @onclick="GoToNextMonth">Next &rsaquo;</button>
+    @if (!IsCurrentMonth)
+    {
+        <button class="btn btn-link btn-sm ms-2" @onclick="GoToToday">Today</button>
+    }
+</div>
+
+<p class="text-muted">
+    Spending shown is for @_monthLabel, scoped to the accounts you can see.
+    @if (!IsCurrentMonth)
+    {
+        <text> Budget amounts reflect each category's current setting, not what it may have been set to back then.</text>
+    }
+</p>
+
+<button class="btn btn-primary mb-3" @onclick="OpenAdd">Add Category</button>
+
+@if (_panelOpen)
+{
+    <CategoryFormPanel Existing="_editingCategory" OnSaved="HandlePanelSavedAsync" OnCancelled="ClosePanel" />
+}
+
+@foreach (var category in _categories)
+{
+    var summary = _summaries.FirstOrDefault(s => s.CategoryId == category.Id);
+
+    <div class="card mb-2 @(category.IsActive ? "" : "text-muted")">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <h5 class="card-title mb-1">
+                        @category.Name
+                        @if (!category.IsActive)
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </h5>
+
+                    @if (summary is not null)
+                    {
+                        @if (summary.Budget is null)
+                        {
+                            <p class="mb-1">Spent: @summary.Spent.ToString("C") (no budget set)</p>
+                        }
+                        else
+                        {
+                            var pct = summary.Budget.Value > 0 ? (double)(summary.Spent / summary.Budget.Value) * 100 : 0;
+                            var over = summary.Spent > summary.Budget.Value;
+                            <p class="mb-1">
+                                Spent @summary.Spent.ToString("C") of @summary.Budget.Value.ToString("C")
+                                &mdash; @(over ? "over by" : "remaining") @Math.Abs(summary.Remaining!.Value).ToString("C")
+                            </p>
+                            <div class="progress mb-1" style="height: 8px;">
+                                <div class="progress-bar @(over ? "bg-danger" : "bg-success")" style="width: @(Math.Min(pct, 100))%"></div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="text-nowrap ms-3">
+                    @if (_confirmingToggleId == category.Id)
+                    {
+                        <span class="me-2">@(category.IsActive ? "Deactivate?" : "Reactivate?")</span>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmToggleAsync(category)">Yes</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _confirmingToggleId = null">No</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEdit(category)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => _confirmingToggleId = category.Id">
+                            @(category.IsActive ? "Deactivate" : "Reactivate")
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Category> _categories = new();
+    private List<CategoryBudgetSummary> _summaries = new();
+    private int _year;
+    private int _month;
+
+    private string _monthLabel => new DateOnly(_year, _month, 1).ToString("MMMM yyyy");
+    private bool IsCurrentMonth => _year == DateTime.Today.Year && _month == DateTime.Today.Month;
+
+    private bool _panelOpen;
+    private Category? _editingCategory;
+    private int? _confirmingToggleId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _year = DateTime.Today.Year;
+        _month = DateTime.Today.Month;
+        _categories = await CategoryService.GetAllCategoriesAsync();
+        await LoadSummaryAsync();
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _summaries = await CategoryService.GetBudgetSummaryAsync(authState.User, _year, _month);
+    }
+
+    private async Task LoadAsync()
+    {
+        _categories = await CategoryService.GetAllCategoriesAsync();
+        await LoadSummaryAsync();
+    }
+
+    private async Task GoToPreviousMonth()
+    {
+        var d = new DateOnly(_year, _month, 1).AddMonths(-1);
+        _year = d.Year;
+        _month = d.Month;
+        await LoadSummaryAsync();
+    }
+
+    private async Task GoToNextMonth()
+    {
+        var d = new DateOnly(_year, _month, 1).AddMonths(1);
+        _year = d.Year;
+        _month = d.Month;
+        await LoadSummaryAsync();
+    }
+
+    private async Task GoToToday()
+    {
+        _year = DateTime.Today.Year;
+        _month = DateTime.Today.Month;
+        await LoadSummaryAsync();
+    }
+
+    private void OpenAdd()
+    {
+        _editingCategory = null;
+        _panelOpen = true;
+        _confirmingToggleId = null;
+    }
+
+    private void OpenEdit(Category category)
+    {
+        _editingCategory = category;
+        _panelOpen = true;
+        _confirmingToggleId = null;
+    }
+
+    private void ClosePanel()
+    {
+        _panelOpen = false;
+        _editingCategory = null;
+    }
+
+    private async Task HandlePanelSavedAsync()
+    {
+        ClosePanel();
+        await LoadAsync();
+    }
+
+    private async Task ConfirmToggleAsync(Category category)
+    {
+        _confirmingToggleId = null;
+        await CategoryService.SetActiveAsync(category.Id, !category.IsActive);
+        await LoadAsync();
+    }
+}
