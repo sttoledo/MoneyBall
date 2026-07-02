@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using MoneyBall.Components;
 using MoneyBall.Data;
@@ -46,9 +47,20 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
-}
 
-app.UseHttpsRedirection();
+    // In production, Tailscale Serve terminates HTTPS and reverse-proxies plain HTTP to Kestrel on
+    // loopback. Trust those forwarded headers so the app perceives the original request as HTTPS
+    // (e.g. so the auth cookie's Secure attribute is set correctly).
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
+}
+else
+{
+    // Kestrel itself only terminates HTTPS locally in Development.
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles();
 app.UseAntiforgery();
