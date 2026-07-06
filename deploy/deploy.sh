@@ -10,6 +10,5 @@ cd "$REPO_DIR"
 git checkout main
 git pull
 dotnet publish MoneyBall/MoneyBall.csproj -c Release -o "$PUBLISH_DIR"
-sudo chown -R moneyball:moneyball "$PUBLISH_DIR"
 sudo systemctl restart moneyball
 sudo systemctl status moneyball --no-pager
