@@ -9,6 +9,11 @@ PUBLISH_DIR="/opt/moneyball/app"
 cd "$REPO_DIR"
 git checkout main
 git pull
+
+# Force a clean rebuild every time: ASP.NET Core's static web assets build cache
+# (under bin/obj) has been observed to skip recopying changed wwwroot files when
+# publishing repeatedly into the same output directory.
+rm -rf MoneyBall/bin MoneyBall/obj
 dotnet publish MoneyBall/MoneyBall.csproj -c Release -o "$PUBLISH_DIR"
 sudo systemctl restart moneyball
 sudo systemctl status moneyball --no-pager
