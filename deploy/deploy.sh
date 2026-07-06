@@ -7,6 +7,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PUBLISH_DIR="/opt/moneyball/app"
 
 cd "$REPO_DIR"
+git checkout main
 git pull
 dotnet publish MoneyBall/MoneyBall.csproj -c Release -o "$PUBLISH_DIR"
 sudo chown -R moneyball:moneyball "$PUBLISH_DIR"
