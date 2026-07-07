@@ -9,27 +9,31 @@
 
 <PageTitle>Login</PageTitle>
 
-<div class="login-box">
-    <h1>MoneyBall</h1>
 
-    @if (_invalidCredentials)
-    {
-        <p class="text-danger">Invalid username or password.</p>
-    }
+<div class="wrapper">
+    <div class="login-box">
+        <h1>MoneyBall</h1>
 
-    <EditForm Model="_model" FormName="login" OnValidSubmit="HandleLoginAsync" method="post">
-        <DataAnnotationsValidator />
-        <div class="mb-3">
-            <label>Username</label>
-            <InputText class="form-control" @bind-Value="_model.Username" />
-        </div>
-        <div class="mb-3">
-            <label>Password</label>
-            <InputText class="form-control" type="password" @bind-Value="_model.Password" />
-        </div>
-        <button class="btn btn-primary" type="submit">Log in</button>
-    </EditForm>
+        @if (_invalidCredentials)
+        {
+            <p class="text-danger">Invalid username or password.</p>
+        }
+
+        <EditForm Model="_model" FormName="login" OnValidSubmit="HandleLoginAsync" method="post">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label>Username</label>
+                <InputText class="form-control" @bind-Value="_model.Username" />
+            </div>
+            <div class="mb-3">
+                <label>Password</label>
+                <InputText class="form-control" type="password" @bind-Value="_model.Password" />
+            </div>
+            <button class="btn btn-primary" type="submit">Log in</button>
+        </EditForm>
+    </div>
 </div>
+
 
 @code {
     [SupplyParameterFromForm]
