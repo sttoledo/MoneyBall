@@ -1,0 +1,21 @@
+﻿html, body {
+    margin: 0;
+    height: 100%;
+}
+
+.wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh; /* was min-height — swap to prevent growing past viewport */
+    box-sizing: border-box;
+}
+
+.login-box {
+    max-width: 400px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+}
