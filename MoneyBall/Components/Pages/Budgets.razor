@@ -48,6 +48,10 @@
                         {
                             <span class="badge bg-secondary">Inactive</span>
                         }
+                        @if (category.IsBudgetExempt)
+                        {
+                            <span class="badge bg-info text-dark">Exempt</span>
+                        }
                     </h5>
 
                     @if (summary is not null)

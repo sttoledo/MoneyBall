@@ -1,4 +1,5 @@
 @page "/"
+@rendermode InteractiveServer
 @using MoneyBall.Services
 @inject AccountService AccountService
 @inject AuthenticationStateProvider AuthStateProvider
@@ -6,6 +7,16 @@
 <PageTitle>Accounts</PageTitle>
 
 <h1>Accounts</h1>
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <button class="btn btn-primary mb-3" @onclick="() => _panelOpen = true">Add Account</button>
+        @if (_panelOpen)
+        {
+            <AccountFormPanel OnSaved="HandleSavedAsync" OnCancelled="() => _panelOpen = false" />
+        }
+    </Authorized>
+</AuthorizeView>
 
 @if (_accounts.Count == 0)
 {
@@ -33,10 +44,22 @@ else
 
 @code {
     private List<MoneyBall.Data.Entities.Account> _accounts = new();
+    private bool _panelOpen;
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         _accounts = await AccountService.GetVisibleAccountsAsync(authState.User);
+    }
+
+    private async Task HandleSavedAsync()
+    {
+        _panelOpen = false;
+        await LoadAsync();
     }
 }

@@ -4,7 +4,8 @@ public enum AccountType
 {
     Checking,
     Savings,
-    Other
+    Other,
+    CreditCard
 }
 
 public class Account

@@ -24,7 +24,11 @@ else
     <p class="fs-3">@_account.Balance.ToString("C")</p>
 
     <button class="btn btn-success me-2" @onclick="() => OpenAdd(TransactionType.Deposit)">Add Deposit</button>
-    <button class="btn btn-danger" @onclick="() => OpenAdd(TransactionType.Expense)">Add Expense</button>
+    <button class="btn btn-danger me-2" @onclick="() => OpenAdd(TransactionType.Expense)">Add Expense</button>
+    @if (_account.Type == AccountType.CreditCard)
+    {
+        <button class="btn btn-primary" @onclick="OpenPayment">Pay Statement</button>
+    }
 
     @if (_panelType is not null)
     {
@@ -35,6 +39,15 @@ else
                                Existing="_editingTransaction"
                                OnSaved="HandlePanelSavedAsync"
                                OnCancelled="ClosePanel" />
+    }
+
+    @if (_payingCreditCard)
+    {
+        <CreditCardPaymentPanel CreditCardAccountId="_account.Id"
+                                 CurrentUserId="_currentUserId"
+                                 OtherAccounts="_otherAccounts"
+                                 OnSaved="HandlePaymentSavedAsync"
+                                 OnCancelled="ClosePayment" />
     }
 
     <table class="table mt-3">
@@ -90,6 +103,9 @@ else
     private TransactionEntry? _editingTransaction;
     private int? _confirmingDeleteId;
 
+    private bool _payingCreditCard;
+    private List<Account> _otherAccounts = new();
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -100,6 +116,13 @@ else
         {
             _categories = await TransactionService.GetActiveCategoriesAsync();
             await RefreshTransactionsAsync();
+
+            if (_account.Type == AccountType.CreditCard)
+            {
+                _otherAccounts = (await AccountService.GetVisibleAccountsAsync(authState.User))
+                    .Where(a => a.Id != _account.Id)
+                    .ToList();
+            }
         }
 
         _loaded = true;
@@ -115,6 +138,7 @@ else
         _panelType = type;
         _editingTransaction = null;
         _confirmingDeleteId = null;
+        _payingCreditCard = false;
     }
 
     private void OpenEdit(TransactionEntry txn)
@@ -122,6 +146,7 @@ else
         _panelType = txn.Type;
         _editingTransaction = txn;
         _confirmingDeleteId = null;
+        _payingCreditCard = false;
     }
 
     private void ClosePanel()
@@ -133,6 +158,27 @@ else
     private async Task HandlePanelSavedAsync()
     {
         ClosePanel();
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _account = await AccountService.GetAccountAsync(Id, authState.User);
+        await RefreshTransactionsAsync();
+    }
+
+    private void OpenPayment()
+    {
+        _payingCreditCard = true;
+        _panelType = null;
+        _editingTransaction = null;
+        _confirmingDeleteId = null;
+    }
+
+    private void ClosePayment()
+    {
+        _payingCreditCard = false;
+    }
+
+    private async Task HandlePaymentSavedAsync()
+    {
+        ClosePayment();
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         _account = await AccountService.GetAccountAsync(Id, authState.User);
         await RefreshTransactionsAsync();
