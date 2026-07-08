@@ -1,0 +1,56 @@
+@using MoneyBall.Data.Entities
+@using MoneyBall.Services
+@inject AccountService AccountService
+
+<div class="card mb-3">
+    <div class="card-body">
+        <h5 class="card-title">Add Account</h5>
+
+        <EditForm Model="_model" OnValidSubmit="HandleSubmitAsync">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-2">
+                <label>Name</label>
+                <InputText class="form-control" @bind-Value="_model.Name" />
+            </div>
+
+            <div class="mb-2">
+                <label>Type</label>
+                <InputSelect class="form-control" @bind-Value="_model.Type">
+                    @foreach (var type in Enum.GetValues<AccountType>())
+                    {
+                        <option value="@type">@type</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-link" @onclick="() => OnCancelled.InvokeAsync()">Cancel</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnSaved { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancelled { get; set; }
+
+    private FormModel _model = new();
+
+    private async Task HandleSubmitAsync()
+    {
+        await AccountService.CreateAccountAsync(_model.Name, _model.Type);
+        await OnSaved.InvokeAsync();
+    }
+
+    private class FormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Name { get; set; } = "";
+
+        public AccountType Type { get; set; } = AccountType.Checking;
+    }
+}

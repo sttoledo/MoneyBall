@@ -20,6 +20,11 @@
                 <InputNumber class="form-control" @bind-Value="_model.MonthlyBudget" />
             </div>
 
+            <div class="mb-2 form-check">
+                <InputCheckbox class="form-check-input" id="isBudgetExempt" @bind-Value="_model.IsBudgetExempt" />
+                <label class="form-check-label" for="isBudgetExempt">Exclude from budgets</label>
+            </div>
+
             <button type="submit" class="btn btn-primary">Save</button>
             <button type="button" class="btn btn-link" @onclick="() => OnCancelled.InvokeAsync()">Cancel</button>
         </EditForm>
@@ -42,7 +47,7 @@
     {
         if (Existing is not null)
         {
-            _model = new FormModel { Name = Existing.Name, MonthlyBudget = Existing.MonthlyBudget };
+            _model = new FormModel { Name = Existing.Name, MonthlyBudget = Existing.MonthlyBudget, IsBudgetExempt = Existing.IsBudgetExempt };
         }
     }
 
@@ -50,11 +55,11 @@
     {
         if (Existing is null)
         {
-            await CategoryService.CreateCategoryAsync(_model.Name, _model.MonthlyBudget);
+            await CategoryService.CreateCategoryAsync(_model.Name, _model.MonthlyBudget, _model.IsBudgetExempt);
         }
         else
         {
-            await CategoryService.UpdateCategoryAsync(Existing.Id, _model.Name, _model.MonthlyBudget);
+            await CategoryService.UpdateCategoryAsync(Existing.Id, _model.Name, _model.MonthlyBudget, _model.IsBudgetExempt);
         }
 
         await OnSaved.InvokeAsync();
@@ -67,5 +72,7 @@
 
         [System.ComponentModel.DataAnnotations.Range(0.01, double.MaxValue, ErrorMessage = "Budget must be greater than 0.")]
         public decimal? MonthlyBudget { get; set; }
+
+        public bool IsBudgetExempt { get; set; }
     }
 }

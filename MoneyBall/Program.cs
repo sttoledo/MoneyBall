@@ -76,6 +76,9 @@ using (var scope = app.Services.CreateScope())
 
     var seedOptions = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SeedUsersOptions>>();
     await DbSeeder.SeedAsync(db, seedOptions);
+
+    var categoryService = scope.ServiceProvider.GetRequiredService<CategoryService>();
+    await categoryService.EnsureCreditCardPaymentCategoryAsync();
 }
 
 app.MapPost("/logout", async (HttpContext ctx) =>

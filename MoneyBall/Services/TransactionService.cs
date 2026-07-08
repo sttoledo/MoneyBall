@@ -97,6 +97,43 @@ public class TransactionService(IDbContextFactory<MoneyBallDbContext> dbFactory)
     public async Task<List<Category>> GetActiveCategoriesAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
-        return await db.Categories.Where(c => c.IsActive).OrderBy(c => c.Name).ToListAsync();
+        return await db.Categories.Where(c => c.IsActive && !c.IsBudgetExempt).OrderBy(c => c.Name).ToListAsync();
+    }
+
+    public async Task PayCreditCardAsync(int fromAccountId, int creditCardAccountId, decimal amount, string description, DateOnly occurredOn, int userId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var paymentCategory = await db.Categories.FirstAsync(c => c.IsBudgetExempt);
+        var fromAccount = await db.Accounts.FirstAsync(a => a.Id == fromAccountId);
+        var creditCardAccount = await db.Accounts.FirstAsync(a => a.Id == creditCardAccountId);
+        var now = DateTime.UtcNow;
+
+        fromAccount.Balance -= amount;
+        db.Transactions.Add(new TransactionEntry
+        {
+            AccountId = fromAccountId,
+            CategoryId = paymentCategory.Id,
+            Type = TransactionType.Expense,
+            Amount = amount,
+            Description = description,
+            OccurredOn = occurredOn,
+            CreatedByUserId = userId,
+            CreatedAt = now
+        });
+
+        creditCardAccount.Balance += amount;
+        db.Transactions.Add(new TransactionEntry
+        {
+            AccountId = creditCardAccountId,
+            CategoryId = null,
+            Type = TransactionType.Deposit,
+            Amount = amount,
+            Description = description,
+            OccurredOn = occurredOn,
+            CreatedByUserId = userId,
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync();
     }
 }

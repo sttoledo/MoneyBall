@@ -18,19 +18,33 @@ public class CategoryService(IDbContextFactory<MoneyBallDbContext> dbFactory, Ac
         return await db.Categories.OrderBy(c => c.Name).ToListAsync();
     }
 
-    public async Task CreateCategoryAsync(string name, decimal? monthlyBudget)
+    public async Task CreateCategoryAsync(string name, decimal? monthlyBudget, bool isBudgetExempt = false)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
-        db.Categories.Add(new Category { Name = name, MonthlyBudget = monthlyBudget, IsActive = true });
+        db.Categories.Add(new Category { Name = name, MonthlyBudget = monthlyBudget, IsActive = true, IsBudgetExempt = isBudgetExempt });
         await db.SaveChangesAsync();
     }
 
-    public async Task UpdateCategoryAsync(int id, string name, decimal? monthlyBudget)
+    public async Task UpdateCategoryAsync(int id, string name, decimal? monthlyBudget, bool isBudgetExempt = false)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         var category = await db.Categories.FirstAsync(c => c.Id == id);
         category.Name = name;
         category.MonthlyBudget = monthlyBudget;
+        category.IsBudgetExempt = isBudgetExempt;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task EnsureCreditCardPaymentCategoryAsync()
+    {
+        const string name = "Credit Card Payment";
+        await using var db = await dbFactory.CreateDbContextAsync();
+        if (await db.Categories.AnyAsync(c => c.Name == name))
+        {
+            return;
+        }
+
+        db.Categories.Add(new Category { Name = name, IsActive = true, IsBudgetExempt = true });
         await db.SaveChangesAsync();
     }
 
@@ -66,8 +80,9 @@ public class CategoryService(IDbContextFactory<MoneyBallDbContext> dbFactory, Ac
 
         // Include inactive categories too if they had spend in this month, so browsing a past
         // month doesn't silently drop spending under a category deactivated since then.
+        // Budget-exempt categories (e.g. "Credit Card Payment") never show a budget row at all.
         var categories = (await db.Categories.OrderBy(c => c.Name).ToListAsync())
-            .Where(c => c.IsActive || spentByCategory.ContainsKey(c.Id))
+            .Where(c => !c.IsBudgetExempt && (c.IsActive || spentByCategory.ContainsKey(c.Id)))
             .ToList();
 
         return categories

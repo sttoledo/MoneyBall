@@ -26,6 +26,13 @@ public class AccountService(IDbContextFactory<MoneyBallDbContext> dbFactory)
             .ToListAsync();
     }
 
+    public async Task CreateAccountAsync(string name, AccountType type)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        db.Accounts.Add(new Account { Name = name, Type = type, Balance = 0m, IsActive = true, CreatedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+    }
+
     public async Task<Account?> GetAccountAsync(int id, ClaimsPrincipal user)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
