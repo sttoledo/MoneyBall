@@ -49,4 +49,33 @@ public class AccountService(IDbContextFactory<MoneyBallDbContext> dbFactory)
             .Select(aa => aa.Account!)
             .FirstOrDefaultAsync(a => a.IsActive);
     }
+
+    public async Task<List<AppUser>> GetRestrictedUsersAsync()
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Users.Where(u => u.Role == UserRole.Restricted).OrderBy(u => u.DisplayName).ToListAsync();
+    }
+
+    public async Task<HashSet<int>> GetAccountAccessUserIdsAsync(int accountId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return (await db.AccountAccesses.Where(aa => aa.AccountId == accountId).Select(aa => aa.UserId).ToListAsync()).ToHashSet();
+    }
+
+    public async Task SetAccountAccessAsync(int accountId, int userId, bool hasAccess)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var existing = await db.AccountAccesses.FirstOrDefaultAsync(aa => aa.AccountId == accountId && aa.UserId == userId);
+
+        if (hasAccess && existing is null)
+        {
+            db.AccountAccesses.Add(new AccountAccess { AccountId = accountId, UserId = userId });
+        }
+        else if (!hasAccess && existing is not null)
+        {
+            db.AccountAccesses.Remove(existing);
+        }
+
+        await db.SaveChangesAsync();
+    }
 }
