@@ -23,6 +23,28 @@ else
     <h6 class="text-muted">@_account.Type</h6>
     <p class="fs-3">@_account.Balance.ToString("C")</p>
 
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            @if (_restrictedUsers.Count > 0)
+            {
+                <div class="mb-3">
+                    <div class="fw-bold mb-1">Visible to</div>
+                    @foreach (var restrictedUser in _restrictedUsers)
+                    {
+                        var hasAccess = _accessByUserId[restrictedUser.Id];
+                        <div class="mb-1">
+                            <span class="me-2">@restrictedUser.DisplayName: @(hasAccess ? "Yes" : "No")</span>
+                            <button class="btn btn-sm @(hasAccess ? "btn-outline-danger" : "btn-outline-success")"
+                                    @onclick="() => ToggleAccessAsync(restrictedUser.Id, !hasAccess)">
+                                @(hasAccess ? "Revoke" : "Grant")
+                            </button>
+                        </div>
+                    }
+                </div>
+            }
+        </Authorized>
+    </AuthorizeView>
+
     <button class="btn btn-success me-2" @onclick="() => OpenAdd(TransactionType.Deposit)">Add Deposit</button>
     <button class="btn btn-danger me-2" @onclick="() => OpenAdd(TransactionType.Expense)">Add Expense</button>
     @if (_account.Type == AccountType.CreditCard)
@@ -106,6 +128,9 @@ else
     private bool _payingCreditCard;
     private List<Account> _otherAccounts = new();
 
+    private List<AppUser> _restrictedUsers = new();
+    private Dictionary<int, bool> _accessByUserId = new();
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -123,9 +148,19 @@ else
                     .Where(a => a.Id != _account.Id)
                     .ToList();
             }
+
+            _restrictedUsers = await AccountService.GetRestrictedUsersAsync();
+            var accessUserIds = await AccountService.GetAccountAccessUserIdsAsync(_account.Id);
+            _accessByUserId = _restrictedUsers.ToDictionary(u => u.Id, u => accessUserIds.Contains(u.Id));
         }
 
         _loaded = true;
+    }
+
+    private async Task ToggleAccessAsync(int userId, bool hasAccess)
+    {
+        await AccountService.SetAccountAccessAsync(_account!.Id, userId, hasAccess);
+        _accessByUserId[userId] = hasAccess;
     }
 
     private async Task RefreshTransactionsAsync()
