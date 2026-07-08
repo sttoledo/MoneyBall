@@ -130,7 +130,7 @@ else
 
     private async Task RefreshTransactionsAsync()
     {
-        _transactions = await TransactionService.GetRecentTransactionsAsync(_account!.Id);
+        _transactions = await TransactionService.GetTransactionsAsync(_account!.Id);
     }
 
     private void OpenAdd(TransactionType type)
