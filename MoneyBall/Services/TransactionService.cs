@@ -82,7 +82,7 @@ public class TransactionService(IDbContextFactory<MoneyBallDbContext> dbFactory)
         await db.SaveChangesAsync();
     }
 
-    public async Task<List<TransactionEntry>> GetRecentTransactionsAsync(int accountId, int take = 20)
+    public async Task<List<TransactionEntry>> GetTransactionsAsync(int accountId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         return await db.Transactions
@@ -90,7 +90,6 @@ public class TransactionService(IDbContextFactory<MoneyBallDbContext> dbFactory)
             .Where(t => t.AccountId == accountId)
             .OrderByDescending(t => t.OccurredOn)
             .ThenByDescending(t => t.Id)
-            .Take(take)
             .ToListAsync();
     }
 
