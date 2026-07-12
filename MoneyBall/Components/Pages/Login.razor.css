@@ -10,6 +10,7 @@
     justify-content: center;
     height: 100vh; /* was min-height — swap to prevent growing past viewport */
     box-sizing: border-box;
+    padding: 0 1.25rem;
 }
 
 .login-box {
