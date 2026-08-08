@@ -43,7 +43,7 @@
             <div class="d-flex justify-content-between align-items-start">
                 <div class="flex-grow-1">
                     <h5 class="card-title mb-1">
-                        @category.Name
+                        <a href="@($"categories/{category.Id}/{_year}/{_month}")" class="text-decoration-none text-body">@category.Name</a>
                         @if (!category.IsActive)
                         {
                             <span class="badge bg-secondary">Inactive</span>
