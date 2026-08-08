@@ -18,6 +18,12 @@ public class CategoryService(IDbContextFactory<MoneyBallDbContext> dbFactory, Ac
         return await db.Categories.OrderBy(c => c.Name).ToListAsync();
     }
 
+    public async Task<Category?> GetCategoryByIdAsync(int id)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Categories.FirstOrDefaultAsync(c => c.Id == id);
+    }
+
     public async Task CreateCategoryAsync(string name, decimal? monthlyBudget, bool isBudgetExempt = false)
     {
         await using var db = await dbFactory.CreateDbContextAsync();

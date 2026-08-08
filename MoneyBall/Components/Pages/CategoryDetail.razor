@@ -1,0 +1,85 @@
+@page "/categories/{Id:int}/{Year:int}/{Month:int}"
+@using MoneyBall.Data.Entities
+@using MoneyBall.Services
+@inject CategoryService CategoryService
+@inject TransactionService TransactionService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>@(_category?.Name ?? "Category")</PageTitle>
+
+<p><a href="/categories">&laquo; Back to Categories</a></p>
+
+@if (!_loaded)
+{
+    <p>Loading...</p>
+}
+else if (_category is null)
+{
+    <p>Category not found.</p>
+}
+else
+{
+    <h1>@_category.Name</h1>
+    <h6 class="text-muted">@_monthLabel</h6>
+    <p class="fs-4">Total: @_transactions.Sum(t => t.Amount).ToString("C")</p>
+
+    @if (_transactions.Count == 0)
+    {
+        <p>No records for this category in @_monthLabel.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table mt-3">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Account</th>
+                        <th>Description</th>
+                        <th class="text-end">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var txn in _transactions)
+                    {
+                        <tr>
+                            <td>@txn.OccurredOn.ToString("d")</td>
+                            <td>@(txn.Account?.Name ?? "")</td>
+                            <td>@txn.Description</td>
+                            <td class="text-end">@txn.Amount.ToString("C")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [Parameter]
+    public int Year { get; set; }
+
+    [Parameter]
+    public int Month { get; set; }
+
+    private bool _loaded;
+    private Category? _category;
+    private List<TransactionEntry> _transactions = new();
+
+    private string _monthLabel => new DateOnly(Year, Month, 1).ToString("MMMM yyyy");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _category = await CategoryService.GetCategoryByIdAsync(Id);
+        if (_category is not null)
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            _transactions = await TransactionService.GetTransactionsForCategoryAsync(authState.User, Id, Year, Month);
+        }
+
+        _loaded = true;
+    }
+}

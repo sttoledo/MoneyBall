@@ -1,10 +1,11 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using MoneyBall.Data;
 using MoneyBall.Data.Entities;
 
 namespace MoneyBall.Services;
 
-public class TransactionService(IDbContextFactory<MoneyBallDbContext> dbFactory)
+public class TransactionService(IDbContextFactory<MoneyBallDbContext> dbFactory, AccountService accountService)
 {
     public async Task AddDepositAsync(int accountId, decimal amount, string description, DateOnly occurredOn, int userId)
     {
@@ -88,6 +89,24 @@ public class TransactionService(IDbContextFactory<MoneyBallDbContext> dbFactory)
         return await db.Transactions
             .Include(t => t.Category)
             .Where(t => t.AccountId == accountId)
+            .OrderByDescending(t => t.OccurredOn)
+            .ThenByDescending(t => t.Id)
+            .ToListAsync();
+    }
+
+    public async Task<List<TransactionEntry>> GetTransactionsForCategoryAsync(ClaimsPrincipal user, int categoryId, int year, int month)
+    {
+        var visibleAccountIds = (await accountService.GetVisibleAccountsAsync(user)).Select(a => a.Id).ToList();
+        var monthStart = new DateOnly(year, month, 1);
+        var monthEnd = monthStart.AddMonths(1);
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Transactions
+            .Include(t => t.Account)
+            .Where(t => t.CategoryId == categoryId
+                        && visibleAccountIds.Contains(t.AccountId)
+                        && t.OccurredOn >= monthStart
+                        && t.OccurredOn < monthEnd)
             .OrderByDescending(t => t.OccurredOn)
             .ThenByDescending(t => t.Id)
             .ToListAsync();
